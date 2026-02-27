@@ -1,0 +1,58 @@
+services:
+    caddy:
+    # This compose file uses caddy-docker-proxy as the reverse proxy for Continuwuity!
+    # For more info, visit https://github.com/lucaslorentz/caddy-docker-proxy
+        image: lucaslorentz/caddy-docker-proxy:ci-alpine
+        container_name: matrix-caddy
+        ports:
+            - 80:80
+            - 443:443
+        environment:
+            - CADDY_INGRESS_NETWORKS=caddy
+        networks:
+            - caddy
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /data:/srv/continuwuity/data # Original uses a relative path, modify to any absolute path you prefer
+        restart: unless-stopped
+        labels:
+            caddy: matrix.example.com # Cert is based on this
+            caddy.0_respond: /.well-known/matrix/server {"m.server":"matrix.example.com:443"}
+            caddy.1_respond: /.well-known/matrix/client {"m.server":{"base_url":"https://matrix.example.com"},"m.homeserver":{"base_url":"https://matrix.example.com"},"org.matrix.msc3575.proxy":{"url":"https://matrix.example.com"}}
+
+    homeserver:
+        ### If you already built the Continuwuity image with 'docker build' or want to use a registry image,
+        ### then you are ready to go.
+        image: forgejo.ellis.link/continuwuation/continuwuity:latest
+        container_name: matrix-srv
+        restart: unless-stopped
+        volumes:
+            - db:/srv/continuwuity/db
+            # The next line caused problems, ubuntu handled it poorly but the docker dns worked to get basic functionality working
+            #- /etc/resolv.conf:/etc/resolv.conf:ro # Use the host's DNS resolver rather than Docker's.
+        environment:
+            CONTINUWUITY_SERVER_NAME: matrix.example.com # EDIT THIS
+            CONTINUWUITY_DATABASE_PATH: /srv/continuwuity/db
+            CONTINUWUITY_PORT: 6167
+            CONTINUWUITY_MAX_REQUEST_SIZE: 20000000 # in bytes, ~20 MB
+            CONTINUWUITY_ALLOW_REGISTRATION: 'true'
+            CONTINUWUITY_REGISTRATION_TOKEN: 'YOUR_TOKEN' # A registration token is required when registration is allowed.
+            #CONTINUWUITY_YES_I_AM_VERY_VERY_SURE_I_WANT_AN_OPEN_REGISTRATION_SERVER_PRONE_TO_ABUSE: 'true'
+            CONTINUWUITY_ALLOW_FEDERATION: 'true'
+            CONTINUWUITY_ALLOW_CHECK_FOR_UPDATES: 'true'
+            CONTINUWUITY_TRUSTED_SERVERS: '["matrix.org"]'
+            #CONTINUWUITY_LOG: warn,state_res=warn
+            CONTINUWUITY_ADDRESS: 0.0.0.0
+            # Any other configs available in https://continuwuity.org/reference/config.html can be added with prefix CONTINUWUITY_
+        networks:
+            - caddy
+        labels:
+            caddy: matrix.example.com
+            caddy.reverse_proxy: "{{upstreams 6167}}"
+
+volumes:
+    db:
+
+networks:
+    caddy:
+        external: true
