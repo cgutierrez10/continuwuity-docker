@@ -22,13 +22,13 @@ Instructions were tested on an amazon EC2 t2.mini instance, 2vcpu 1gb memory, 10
 
 ### Compose and load steps
 1. Create caddy network, this is not done in the compose file. Then compose the file up. Use sudo if needed.
-    docker network create caddy
-    docker-compose -f matrix-better.yml up -d
+`docker network create caddy`
+`docker-compose -f matrix-better.yml up -d`
 2. Check matrix-caddy logs to look for acme cert success. If connections failing debug for external http calls reaching this system. The caddy server uses an HTTP-01 cert challenge, does not require a dns wildcard or any additional setup.
-    docker container logs matrix-caddy
+`docker container logs matrix-caddy`
 3. Once certs are successful use a federation checker, [Federation configuration test tool](https://federationtester.mtrnord.blog/) . Expect it to prompt for allow access to local network devices, blocking this causes false cors errors that can make debugging hard.
 3.1 If all green you are ready to create first user. Check matrix-srv log for the token for first user create, open a matrix client login to your matrix server subdomain name enter username and password next step prompts for token. After first user is created the token specified in the matrix-better.yml file is valid for more new users.
-    docker container logs matrix-srv
+`docker container logs matrix-srv`
 4. Join the admin room of your server, check connectivity with '!admin debug ping matrix.org', if you get a result then server is ready. Note: This can take up to 10 minutes to fail if it is not working, there should be a result fairly quickly if not wait 10 minutes for the fail message. Error I had the most trouble with was dns resolution issues, I had to comment out the resolve.conf volume mount in the yml on ubuntu, try commenting it in if dns resolution is failing.
 
 
